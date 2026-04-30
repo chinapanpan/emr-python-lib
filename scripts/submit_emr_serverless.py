@@ -14,7 +14,7 @@ import json
 import os
 from datetime import datetime
 
-REGION = os.environ.get("AWS_REGION", "ap-southeast-1")
+REGION = os.environ.get("EMR_REGION", "ap-southeast-1")
 S3_BUCKET = os.environ.get("S3_BUCKET", "zpfsingapore")
 S3_PREFIX = os.environ.get("S3_PREFIX", "emr/poc")
 S3_LOGS = f"s3://{S3_BUCKET}/{S3_PREFIX}/logs/serverless"
