@@ -175,9 +175,48 @@ To use this solution in a different AWS account or region:
 - Third-party libraries (numpy, pandas, requests): PASSED
 - Custom shared libraries (shared_libs): PASSED
 
-### EMR on EC2 (emr-6.15.0) - PASSED
+### EMR on EC2 (emr-6.15.0) - PENDING
 
-- Cluster ID: (see test output)
-- Step: spark-submit with --archives
-- Third-party libraries: PASSED
-- Custom shared libraries: PASSED
+- The submission script (`scripts/submit_emr_on_ec2.py`) uses the same `--archives` + `PYTHONPATH` mechanism
+- Only difference from Serverless: `spark.yarn.appMasterEnv.PYTHONPATH` instead of `spark.emr-serverless.driverEnv.PYTHONPATH`
+- Note: EMR on EC2 cluster bootstrap may take 10-15 minutes; ensure VPC has proper internet connectivity
+
+## Standardized Dependency Packaging Flow
+
+```
+Step 1: Develop custom Python libraries
+         └── shared_libs/ (your custom code)
+
+Step 2: Define third-party dependencies
+         └── requirements.txt (packages not pre-installed on EMR)
+
+Step 3: Run packaging script
+         └── python3.12 scripts/package_dependencies.py
+             ├── Downloads platform-specific wheels (Python 3.9, manylinux2014_x86_64)
+             ├── Extracts wheels into unified directory
+             ├── Copies custom shared_libs into same directory
+             └── Creates single tar.gz archive
+
+Step 4: Upload archive + job script to S3
+         └── s3://bucket/prefix/libs/pyspark_deps_all.tar.gz
+             s3://bucket/prefix/jobs/main_job.py
+
+Step 5: Submit job
+         EMR Serverless:  python3.12 scripts/submit_emr_serverless.py
+         EMR on EC2:      python3.12 scripts/submit_emr_on_ec2.py
+```
+
+### Spark Submit Parameters (Core Pattern)
+
+```bash
+spark-submit \
+  --archives s3://bucket/libs/pyspark_deps_all.tar.gz#deps \
+  --conf spark.<platform-specific>.PYTHONPATH=./deps \
+  --conf spark.executorEnv.PYTHONPATH=./deps \
+  s3://bucket/jobs/main_job.py
+```
+
+| Platform | Driver PYTHONPATH Config |
+|----------|------------------------|
+| EMR Serverless | `spark.emr-serverless.driverEnv.PYTHONPATH=./deps` |
+| EMR on EC2 (YARN cluster mode) | `spark.yarn.appMasterEnv.PYTHONPATH=./deps` |
