@@ -1,0 +1,5 @@
+numpy
+pandas
+requests
+boto3
+venv-pack
