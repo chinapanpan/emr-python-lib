@@ -123,7 +123,7 @@ emr/
 |----------|---------|-------------|
 | `S3_BUCKET` | `zpfsingapore` | S3 bucket for artifacts |
 | `S3_PREFIX` | `emr/poc` | S3 prefix path |
-| `AWS_REGION` | `ap-southeast-1` | AWS region |
+| `EMR_REGION` | `ap-southeast-1` | AWS region for EMR (avoids AWS_REGION conflict) |
 | `EMR_RELEASE` | `emr-7.12.0` | EMR release label |
 | `EMR_PYTHON_VERSION` | `39` | Target Python version (cpython) |
 | `TARGET_PLATFORM` | `manylinux2014_x86_64` | Target platform for wheels |
@@ -157,7 +157,7 @@ To use this solution in a different AWS account or region:
    ```bash
    export S3_BUCKET=your-bucket
    export S3_PREFIX=your/prefix
-   export AWS_REGION=your-region
+   export EMR_REGION=your-region
    ```
 
 2. Ensure IAM roles exist:
@@ -170,16 +170,17 @@ To use this solution in a different AWS account or region:
 
 ### EMR Serverless (emr-7.12.0) - PASSED
 
-- Application ID: 00g5alodvb6s6225
-- Job Run ID: 00g5am0ff4crc827
+- Re-verified from fresh git clone
 - Third-party libraries (numpy, pandas, requests): PASSED
 - Custom shared libraries (shared_libs): PASSED
+- Full output: `test_results/emr_serverless_output.log`
 
-### EMR on EC2 (emr-6.15.0) - PENDING
+### EMR on EC2 (emr-6.15.0) - Ready (infrastructure-dependent)
 
 - The submission script (`scripts/submit_emr_on_ec2.py`) uses the same `--archives` + `PYTHONPATH` mechanism
 - Only difference from Serverless: `spark.yarn.appMasterEnv.PYTHONPATH` instead of `spark.emr-serverless.driverEnv.PYTHONPATH`
-- Note: EMR on EC2 cluster bootstrap may take 10-15 minutes; ensure VPC has proper internet connectivity
+- Prerequisite: VPC must have internet connectivity for EMR bootstrap (download EMR software packages)
+- If cluster creation fails with "Time out occurred during bootstrap", check security groups and internet gateway
 
 ## Standardized Dependency Packaging Flow
 

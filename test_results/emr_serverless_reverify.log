@@ -1,0 +1,101 @@
+2026-04-30 14:48:30,282 - emr_poc_job - INFO - ============================================================
+2026-04-30 14:48:30,282 - emr_poc_job - INFO - EMR PySpark Dependency POC Job
+2026-04-30 14:48:30,282 - emr_poc_job - INFO - Start Time: 2026-04-30 14:48:30
+2026-04-30 14:48:30,282 - emr_poc_job - INFO - Python Version: 3.9.25 (main, Dec 10 2025, 00:00:00) 
+[GCC 11.5.0 20240719 (Red Hat 11.5.0-5)]
+2026-04-30 14:48:30,282 - emr_poc_job - INFO - ============================================================
+2026-04-30 14:48:58,544 - emr_poc_job - INFO - ============================================================
+2026-04-30 14:48:58,544 - emr_poc_job - INFO - SECTION 1: Third-party Library Verification
+2026-04-30 14:48:58,544 - emr_poc_job - INFO - ============================================================
+2026-04-30 14:48:58,544 - emr_poc_job - INFO - NumPy version: 2.0.2
+2026-04-30 14:48:58,544 - emr_poc_job - INFO - NumPy array mean: 3.0, std: 1.4142
+2026-04-30 14:48:58,546 - emr_poc_job - INFO - Pandas version: 2.3.3
+2026-04-30 14:48:58,546 - emr_poc_job - INFO - Pandas DataFrame shape: (5, 3)
+2026-04-30 14:48:58,550 - emr_poc_job - INFO - Pandas DataFrame:
+  sensor_id     value           timestamp
+0       s_0  2.173647 2024-01-01 00:00:00
+1       s_1 -0.822045 2024-01-01 01:00:00
+2       s_2  3.518694 2024-01-01 02:00:00
+3       s_3  0.171494 2024-01-01 03:00:00
+4       s_4 -1.162441 2024-01-01 04:00:00
+2026-04-30 14:48:58,550 - emr_poc_job - INFO - Requests version: 2.32.5
+2026-04-30 14:49:03,714 - emr_poc_job - INFO - Converted Pandas->Spark DataFrame count: 5
++---------+-------------------+
+|sensor_id|              value|
++---------+-------------------+
+|      s_0|  2.173646990969589|
+|      s_1|-0.8220446531049456|
+|      s_2| 3.5186943965838835|
+|      s_3| 0.1714937360398643|
+|      s_4|-1.1624411521451588|
++---------+-------------------+
+
+2026-04-30 14:49:05,251 - emr_poc_job - INFO - Third-party libs test: PASSED
+2026-04-30 14:49:05,251 - emr_poc_job - INFO - ============================================================
+2026-04-30 14:49:05,251 - emr_poc_job - INFO - SECTION 2: Custom Shared Library Verification
+2026-04-30 14:49:05,251 - emr_poc_job - INFO - ============================================================
+2026-04-30 14:49:05,251 - emr_poc_job - INFO - Environment: prod, Region: ap-southeast-1, Bucket: zpfsingapore
+2026-04-30 14:49:05,251 - emr_poc_job - INFO - Sensor Type Mapping: {'temperature': 'double', 'humidity': 'double', 'pressure': 'double', 'timestamp': 'timestamp', 'device_id': 'string', 'location': 'string', 'status': 'integer'}
+2026-04-30 14:49:05,252 - emr_poc_job - INFO - CastingParameter: CastingParameter(source_column='raw_temp', target_column='temperature', target_type='double', nullable=True, default_value=None)
+2026-04-30 14:49:05,252 - emr_poc_job - INFO - Sensor Model schema: {'temperature': 'double', 'humidity': 'double', 'pressure': 'double', 'timestamp': 'timestamp', 'device_id': 'string', 'location': 'string', 'status': 'integer'}
+2026-04-30 14:49:05,252 - emr_poc_job - INFO - Sensor Model metadata: {'source_name': 'iot_sensors', 'schema': "{'temperature': 'double', 'humidity': 'double', 'pressure': 'double', 'timestamp': 'timestamp', 'device_id': 'string', 'location': 'string', 'status': 'integer'}"}
+2026-04-30 14:49:05,283 - emr_poc_job - INFO - Sensor Data:
++----------+-----------+-----------+--------+--------+-------------------+------+
+| device_id|   location|temperature|humidity|pressure|          timestamp|status|
++----------+-----------+-----------+--------+--------+-------------------+------+
+|sensor_001|warehouse_A|       23.5|    65.2| 1013.25|2024-01-01 10:00:00|     1|
+|sensor_002|warehouse_B|       21.8|    70.1|  1012.8|2024-01-01 10:00:00|     1|
+|sensor_003|warehouse_A|       25.1|    55.8|  1014.1|2024-01-01 10:01:00|     0|
+|sensor_004|warehouse_C|       19.3|    80.5|  1011.5|2024-01-01 10:01:00|     1|
+|sensor_005|warehouse_B|       22.7|    68.9|  1013.0|2024-01-01 10:02:00|     1|
++----------+-----------+-----------+--------+--------+-------------------+------+
+
+2026-04-30 14:49:05,876 - emr_poc_job - INFO - Aggregated Sensor Data by Location:
++-----------+---------------+------------+------------+-------------+--------------+
+|   location|avg_temperature|avg_humidity|avg_pressure|reading_count|active_sensors|
++-----------+---------------+------------+------------+-------------+--------------+
+|warehouse_A|           24.3|        60.5|    1013.675|            2|             1|
+|warehouse_B|          22.25|        69.5|      1012.9|            2|             2|
+|warehouse_C|           19.3|        80.5|      1011.5|            1|             1|
++-----------+---------------+------------+------------+-------------+--------------+
+
+2026-04-30 14:49:09,485 - emr_poc_job - INFO - Data Quality Result: {
+  "passed": true,
+  "row_count": 5,
+  "null_ratios": {
+    "temperature": 0.0,
+    "humidity": 0.0,
+    "pressure": 0.0
+  },
+  "duplicate_ratio": 0.0,
+  "issues": [
+    "Row count 5 below minimum threshold (warning)"
+  ]
+}
+2026-04-30 14:49:09,521 - emr_poc_job - INFO - Historical Sensor Pipeline Data:
++-------------------+-------------+------+-----------+--------+----------------+
+|       trigger_time|    device_id|  zone|temperature|humidity|duration_minutes|
++-------------------+-------------+------+-----------+--------+----------------+
+|2024-01-01 10:00:00|sensor_hs_001|zone_A|       22.5|    60.0|              60|
+|2024-01-01 10:00:00|sensor_hs_002|zone_B|       24.1|    55.3|              60|
+|2024-01-01 10:00:00|sensor_hs_003|zone_A|       21.8|    62.7|              60|
+|2024-01-01 10:00:00|sensor_hs_004|zone_C|       26.3|    48.9|              60|
++-------------------+-------------+------+-----------+--------+----------------+
+
+2026-04-30 14:49:09,951 - emr_poc_job - INFO - Downstream Sensor Pipeline Data:
++-------------------+-----------+---------+--------+------------+--------------+
+|       trigger_time|pipeline_id|    stage|avg_temp|alert_status|window_minutes|
++-------------------+-----------+---------+--------+------------+--------------+
+|2024-01-01 10:00:00|     ds_001|processed|    23.2|      NORMAL|            60|
+|2024-01-01 10:00:00|     ds_002|processed|    25.8|     WARNING|            60|
+|2024-01-01 10:00:00|     ds_003|      raw|    20.1|      NORMAL|            60|
++-------------------+-----------+---------+--------+------------+--------------+
+
+2026-04-30 14:49:10,311 - emr_poc_job - INFO - Custom libs test: PASSED
+2026-04-30 14:49:10,311 - emr_poc_job - INFO - ============================================================
+2026-04-30 14:49:10,311 - emr_poc_job - INFO - FINAL RESULTS
+2026-04-30 14:49:10,311 - emr_poc_job - INFO - ============================================================
+2026-04-30 14:49:10,311 - emr_poc_job - INFO - Third-party libraries (numpy, pandas, requests): PASSED
+2026-04-30 14:49:10,311 - emr_poc_job - INFO - Custom shared libraries (shared_libs): PASSED
+2026-04-30 14:49:10,311 - emr_poc_job - INFO - Overall: ALL PASSED
+2026-04-30 14:49:10,311 - emr_poc_job - INFO - End Time: 2026-04-30 14:49:10
