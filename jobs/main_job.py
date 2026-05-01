@@ -1,25 +1,25 @@
 """
-Main PySpark job demonstrating usage of:
-1. Third-party libraries (numpy, pandas, requests)
-2. Custom shared libraries (shared_libs package)
+主 PySpark 任务，验证以下依赖的可用性：
+1. 第三方库（numpy、pandas、requests）
+2. 自定义类库（shared_libs 包）
 
-This job:
-- Creates sample sensor data using custom models
-- Performs data quality checks using custom utils
-- Uses numpy/pandas for additional processing
-- Outputs results to demonstrate all dependencies work
+本任务：
+- 使用自定义模型创建传感器示例数据
+- 使用自定义工具进行数据质量检查
+- 使用 numpy/pandas 进行数据处理
+- 输出结果以验证所有依赖均正常工作
 """
 
 import sys
 import json
 from datetime import datetime
 
-# Third-party library imports
+# 第三方库导入
 import numpy as np
 import pandas as pd
 import requests
 
-# Custom shared library imports
+# 自定义类库导入
 from shared_libs.constants.config import ENV, REGION, S3_BUCKET
 from shared_libs.constants.casting_parameter import CastingParameter, SENSOR_TYPE_MAPPING
 from shared_libs.models.sensor_model import SensorDataModel
@@ -34,7 +34,7 @@ logger = get_logger("emr_poc_job")
 
 
 def demonstrate_third_party_libs(spark):
-    """Demonstrate that third-party libraries work correctly."""
+    """验证第三方库是否正常工作。"""
     logger.info("=" * 60)
     logger.info("SECTION 1: Third-party Library Verification")
     logger.info("=" * 60)
@@ -66,7 +66,7 @@ def demonstrate_third_party_libs(spark):
 
 
 def demonstrate_custom_libs(spark):
-    """Demonstrate that custom shared libraries work correctly."""
+    """验证自定义类库是否正常工作。"""
     logger.info("=" * 60)
     logger.info("SECTION 2: Custom Shared Library Verification")
     logger.info("=" * 60)

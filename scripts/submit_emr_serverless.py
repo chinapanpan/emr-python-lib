@@ -1,11 +1,11 @@
 """
-Submit PySpark job to EMR Serverless with unified dependency package.
+提交 PySpark 任务到 EMR Serverless，使用统一依赖包。
 
-The unified package (pyspark_deps_all.tar.gz) contains:
-- Custom shared libraries (shared_libs/)
-- Third-party Python packages (requests, etc.)
+统一依赖包 (pyspark_deps_all.tar.gz) 包含：
+- 自定义类库 (shared_libs/)
+- 第三方 Python 包 (requests 等)
 
-When extracted via --archives, all packages are importable through PYTHONPATH.
+通过 --archives 解压后，所有包均可通过 PYTHONPATH 导入。
 """
 
 import boto3
@@ -25,7 +25,7 @@ S3_DEPS_ARCHIVE = f"s3://{S3_BUCKET}/{S3_PREFIX}/libs/pyspark_deps_all.tar.gz"
 
 
 def get_or_create_application(client):
-    """Get existing application or create a new one."""
+    """获取已有应用或创建新应用。"""
     app_name = f"emr-poc-serverless-{RELEASE_LABEL.replace('emr-', '')}"
 
     response = client.list_applications()
@@ -65,7 +65,7 @@ def _wait_for_app(client, app_id, target, timeout=300):
 
 
 def get_execution_role():
-    """Get or create the EMR Serverless execution role."""
+    """获取或创建 EMR Serverless 执行角色。"""
     iam = boto3.client("iam", region_name=REGION)
     role_name = "EMRServerlessS3RuntimeRole"
 
@@ -92,7 +92,7 @@ def get_execution_role():
 
 
 def submit_job(client, app_id, role_arn):
-    """Submit PySpark job with unified dependency archive."""
+    """使用统一依赖归档提交 PySpark 任务。"""
     job_name = f"poc-unified-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
     spark_params = " ".join([
@@ -128,7 +128,7 @@ def submit_job(client, app_id, role_arn):
 
 
 def wait_for_job(client, app_id, job_run_id, timeout=900):
-    """Wait for job completion."""
+    """等待任务完成。"""
     print(f"[..] Waiting for job (timeout: {timeout}s)...")
     start = time.time()
     while time.time() - start < timeout:

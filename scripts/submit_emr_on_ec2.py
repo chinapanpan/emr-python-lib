@@ -1,8 +1,8 @@
 """
-Submit PySpark job to EMR on EC2 via spark-submit step.
+通过 spark-submit step 提交 PySpark 任务到 EMR on EC2。
 
-Uses the same unified dependency archive as EMR Serverless.
-The only difference is the PYTHONPATH configuration key:
+使用与 EMR Serverless 相同的统一依赖归档。
+唯一区别是 PYTHONPATH 配置项：
 - EMR Serverless: spark.emr-serverless.driverEnv.PYTHONPATH
 - EMR on EC2:     spark.yarn.appMasterEnv.PYTHONPATH
 """
@@ -28,7 +28,7 @@ INSTANCE_COUNT = int(os.environ.get("EMR_INSTANCE_COUNT", "2"))
 
 
 def get_or_create_cluster(client):
-    """Get existing running cluster or create a new one."""
+    """获取已有运行中的集群或创建新集群。"""
     resp = client.list_clusters(ClusterStates=["WAITING", "RUNNING"])
     for c in resp.get("Clusters", []):
         if c["Name"] == CLUSTER_NAME:
@@ -89,10 +89,10 @@ def _wait_for_cluster(client, cluster_id, timeout=600):
 
 
 def submit_step(client, cluster_id):
-    """Submit spark-submit step with unified dependency archive."""
+    """使用统一依赖归档提交 spark-submit step。"""
     step_name = f"poc-unified-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-    # spark-submit arguments - same archive, different env var config
+    # spark-submit 参数 - 相同归档，不同环境变量配置
     args = [
         "spark-submit",
         "--deploy-mode", "cluster",
@@ -122,7 +122,7 @@ def submit_step(client, cluster_id):
 
 
 def wait_for_step(client, cluster_id, step_id, timeout=900):
-    """Wait for step completion."""
+    """等待 step 完成。"""
     print(f"[..] Waiting for step (timeout: {timeout}s)...")
     start = time.time()
     while time.time() - start < timeout:

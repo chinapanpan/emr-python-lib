@@ -1,16 +1,16 @@
 """
-Package ALL dependencies (custom + third-party) into a SINGLE unified archive.
+将所有依赖（自定义类库 + 第三方包）打包为单一统一归档文件。
 
-Output:
-  - pyspark_deps_all.tar.gz: Contains both custom shared_libs AND third-party packages
-    When extracted via --archives, all packages are importable via PYTHONPATH
+输出：
+  - pyspark_deps_all.tar.gz：包含自定义 shared_libs 和第三方包
+    通过 --archives 解压后，所有包均可通过 PYTHONPATH 导入
 
-This single-archive approach ensures:
-  1. Unified dependency management
-  2. Consistent behavior across EMR Serverless and EMR on EC2
-  3. Simple deployment: one archive to upload, one parameter to set
+统一归档方案的优势：
+  1. 依赖统一管理
+  2. EMR Serverless 和 EMR on EC2 行为一致
+  3. 部署简单：上传一个归档，设置一个参数
 
-Usage (both platforms):
+使用方式（两平台通用）：
   spark-submit --archives s3://bucket/pyspark_deps_all.tar.gz#deps \
     --conf spark.emr-serverless.driverEnv.PYTHONPATH=./deps \
     --conf spark.executorEnv.PYTHONPATH=./deps \
@@ -40,7 +40,7 @@ THIRD_PARTY_PACKAGES = [
 
 
 def clean_build():
-    """Clean previous build artifacts."""
+    """清理之前的构建产物。"""
     if BUILD_DIR.exists():
         shutil.rmtree(BUILD_DIR)
     BUILD_DIR.mkdir(parents=True)
@@ -48,7 +48,7 @@ def clean_build():
 
 
 def download_third_party_wheels():
-    """Download platform-specific wheels for third-party packages."""
+    """下载平台特定的第三方包 wheel 文件。"""
     wheels_dir = BUILD_DIR / "wheels"
     wheels_dir.mkdir(exist_ok=True)
 
@@ -100,17 +100,17 @@ def download_third_party_wheels():
 
 
 def build_unified_package(wheels_dir):
-    """Build a single unified archive containing custom code + third-party packages."""
+    """构建包含自定义代码和第三方包的单一统一归档。"""
     package_dir = BUILD_DIR / "unified_package"
     package_dir.mkdir(exist_ok=True)
 
-    # Step 1: Copy custom shared_libs
-    print(f"[..] Adding custom libraries from {SHARED_LIBS_DIR}")
+    # 步骤 1：复制自定义 shared_libs
+    print(f"[..] 添加自定义类库：{SHARED_LIBS_DIR}")
     dest_shared = package_dir / "shared_libs"
     shutil.copytree(SHARED_LIBS_DIR, dest_shared, ignore=shutil.ignore_patterns("__pycache__"))
 
-    # Step 2: Extract third-party wheels into the same directory
-    print(f"[..] Adding third-party packages from wheels")
+    # 步骤 2：解压第三方 wheel 到同一目录
+    print(f"[..] 添加第三方包")
     for whl in wheels_dir.glob("*.whl"):
         with zipfile.ZipFile(whl, "r") as zf:
             for member in zf.namelist():
@@ -120,9 +120,9 @@ def build_unified_package(wheels_dir):
                 zf.extract(member, package_dir)
         print(f"     + {whl.stem.split('-')[0]}")
 
-    # Step 3: Create tar.gz archive
+    # 步骤 3：创建 tar.gz 归档
     archive_path = BUILD_DIR / "pyspark_deps_all.tar.gz"
-    print(f"[..] Creating unified archive: {archive_path}")
+    print(f"[..] 创建统一归档：{archive_path}")
     with tarfile.open(archive_path, "w:gz") as tar:
         for item in package_dir.iterdir():
             tar.add(item, arcname=item.name)
@@ -130,8 +130,8 @@ def build_unified_package(wheels_dir):
     print(f"[OK] Unified archive created: {archive_path}")
     print(f"     Size: {archive_path.stat().st_size / (1024*1024):.1f} MB")
 
-    # List top-level contents
-    print("     Contents (top-level):")
+    # 列出顶层内容
+    print("     归档内容（顶层）：")
     for item in sorted(package_dir.iterdir()):
         if item.is_dir():
             print(f"       [DIR] {item.name}/")
@@ -142,7 +142,7 @@ def build_unified_package(wheels_dir):
 
 
 def upload_to_s3(archive_path):
-    """Upload artifacts to S3."""
+    """上传产物到 S3。"""
     import boto3
     s3 = boto3.client("s3", region_name="ap-southeast-1")
 

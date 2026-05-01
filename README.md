@@ -1,28 +1,27 @@
-# EMR PySpark Dependency Management POC
+# EMR PySpark 依赖包管理方案 (POC)
 
-## Overview
+## 概述
 
-This project demonstrates a **unified approach** for managing Python dependencies (both third-party libraries and custom code) when submitting PySpark jobs to:
+本项目演示了在提交 PySpark 任务到以下平台时，**统一管理 Python 依赖包**（第三方库 + 自定义类库）的标准化方案：
 
 - **EMR Serverless**
-- **EMR on EC2** (via spark-submit)
+- **EMR on EC2**（通过 spark-submit）
 
-The key principle: **package all dependencies into a single archive**, use `--archives` to distribute it, and `PYTHONPATH` to make packages importable.
+核心原则：**将所有依赖打包为单一归档文件**，使用 `--archives` 分发到所有节点，通过 `PYTHONPATH` 使包可导入。
 
-## Architecture
+## 架构
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Unified Dependency Package               │
-│              (pyspark_deps_all.tar.gz)                    │
+│              统一依赖包 (pyspark_deps_all.tar.gz)         │
 │                                                           │
 │  ┌─────────────────────┐  ┌───────────────────────────┐ │
-│  │  Custom Libraries    │  │  Third-party Packages      │ │
-│  │  (shared_libs/)      │  │  (requests, certifi, etc.) │ │
+│  │  自定义类库           │  │  第三方 Python 包          │ │
+│  │  (shared_libs/)      │  │  (requests, certifi 等)   │ │
 │  │                      │  │                            │ │
-│  │  - constants/        │  │  Packaged as platform-     │ │
-│  │  - models/           │  │  specific wheels for the   │ │
-│  │  - core_data_*_utils/│  │  target EMR Python version │ │
+│  │  - constants/        │  │  以平台兼容的 wheel 形式   │ │
+│  │  - models/           │  │  针对 EMR 目标 Python      │ │
+│  │  - core_data_*_utils/│  │  版本进行下载              │ │
 │  │  - utils/            │  │                            │ │
 │  └─────────────────────┘  └───────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
@@ -35,189 +34,189 @@ The key principle: **package all dependencies into a single archive**, use `--ar
   └───────────────┘           └───────────────────┘
 ```
 
-## Quick Start
+## 快速开始
 
-### 1. Package Dependencies
+### 1. 打包依赖
 
 ```bash
 python3.12 scripts/package_dependencies.py
 ```
 
-This script:
-1. Downloads third-party packages as platform-compatible wheels (targeting EMR's Python 3.9)
-2. Copies custom `shared_libs/` code
-3. Combines everything into one `pyspark_deps_all.tar.gz`
-4. Uploads to S3
+该脚本执行以下操作：
+1. 下载平台兼容的第三方包 wheel（针对 EMR 的 Python 3.9）
+2. 复制自定义 `shared_libs/` 代码
+3. 合并为单一 `pyspark_deps_all.tar.gz` 归档
+4. 上传至 S3
 
-### 2. Submit to EMR Serverless
+### 2. 提交到 EMR Serverless
 
 ```bash
 python3.12 scripts/submit_emr_serverless.py
 ```
 
-### 3. Submit to EMR on EC2
+### 3. 提交到 EMR on EC2
 
 ```bash
 python3.12 scripts/submit_emr_on_ec2.py
 ```
 
-## How It Works
+## 工作原理
 
-### Submission Parameters (Consistent Across Both Platforms)
+### 提交参数对比（两平台保持一致）
 
-| Parameter | EMR Serverless | EMR on EC2 (YARN) |
-|-----------|---------------|-------------------|
-| Archive | `--archives s3://bucket/pyspark_deps_all.tar.gz#deps` | Same |
+| 参数 | EMR Serverless | EMR on EC2 (YARN) |
+|------|---------------|-------------------|
+| 归档文件 | `--archives s3://bucket/pyspark_deps_all.tar.gz#deps` | 相同 |
 | Driver PYTHONPATH | `--conf spark.emr-serverless.driverEnv.PYTHONPATH=./deps` | `--conf spark.yarn.appMasterEnv.PYTHONPATH=./deps` |
-| Executor PYTHONPATH | `--conf spark.executorEnv.PYTHONPATH=./deps` | Same |
-| Entry point | `s3://bucket/jobs/main_job.py` | Same |
+| Executor PYTHONPATH | `--conf spark.executorEnv.PYTHONPATH=./deps` | 相同 |
+| 入口脚本 | `s3://bucket/jobs/main_job.py` | 相同 |
 
-### The Archive Contents
+### 归档文件内容
 
 ```
 pyspark_deps_all.tar.gz
-├── shared_libs/           # Custom Python libraries
+├── shared_libs/           # 自定义 Python 类库
 │   ├── __init__.py
-│   ├── constants/
-│   ├── models/
-│   ├── core_data_common_utils/
-│   ├── core_data_source_utils/
-│   └── utils/
-├── requests/              # Third-party: requests
-├── certifi/               # Third-party: certifi  
-├── charset_normalizer/    # Third-party: charset_normalizer
-├── idna/                  # Third-party: idna
-└── urllib3/               # Third-party: urllib3
+│   ├── constants/         # 配置常量、类型映射
+│   ├── models/            # 数据模型（BaseExternalDataSource 等）
+│   ├── core_data_common_utils/  # 数据质量检查、Spark 工具
+│   ├── core_data_source_utils/  # 文件工具、S3 数据加载器
+│   └── utils/             # 日志、日期工具
+├── requests/              # 第三方包：requests
+├── certifi/               # 第三方包：certifi  
+├── charset_normalizer/    # 第三方包：charset_normalizer
+├── idna/                  # 第三方包：idna
+└── urllib3/               # 第三方包：urllib3
 ```
 
-### How Spark Uses It
+### Spark 处理流程
 
-1. Spark downloads the archive from S3 to each node
-2. Extracts it as `./deps/` (the alias after `#`)
-3. `PYTHONPATH=./deps` lets Python find all packages inside
-4. Both custom (`shared_libs`) and third-party packages are importable
+1. Spark 从 S3 下载归档文件到每个节点
+2. 解压为 `./deps/` 目录（`#` 后的别名）
+3. `PYTHONPATH=./deps` 让 Python 能找到目录中所有包
+4. 自定义类库（`shared_libs`）和第三方包均可正常导入
 
-## Project Structure
+## 项目结构
 
 ```
-emr/
-├── shared_libs/                # Custom Python libraries
-│   ├── constants/              # Configuration & type mappings
-│   ├── models/                 # Data models (BaseExternalDataSource, etc.)
-│   ├── core_data_common_utils/ # Data quality, Spark utilities
-│   ├── core_data_source_utils/ # File utils, S3 data loader
-│   └── utils/                  # Logging, date utilities
+emr-python-lib/
+├── shared_libs/                # 自定义 Python 类库
+│   ├── constants/              # 配置常量、类型映射
+│   ├── models/                 # 数据模型（BaseExternalDataSource 等）
+│   ├── core_data_common_utils/ # 数据质量检查、Spark 工具
+│   ├── core_data_source_utils/ # 文件工具、S3 数据加载器
+│   └── utils/                  # 日志、日期工具
 ├── jobs/
-│   └── main_job.py            # Main PySpark job (demo)
+│   └── main_job.py            # 主 PySpark 任务（验证用）
 ├── scripts/
-│   ├── package_dependencies.py # Packaging script
-│   ├── submit_emr_serverless.py # EMR Serverless submission
-│   └── submit_emr_on_ec2.py   # EMR on EC2 submission
-├── requirements.txt            # Third-party dependencies
+│   ├── package_dependencies.py # 打包脚本
+│   ├── submit_emr_serverless.py # EMR Serverless 提交脚本
+│   └── submit_emr_on_ec2.py   # EMR on EC2 提交脚本
+├── requirements.txt            # 第三方依赖声明
 └── README.md
 ```
 
-## Configuration (Environment Variables)
+## 配置（环境变量）
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `S3_BUCKET` | `zpfsingapore` | S3 bucket for artifacts |
-| `S3_PREFIX` | `emr/poc` | S3 prefix path |
-| `EMR_REGION` | `ap-southeast-1` | AWS region for EMR (avoids AWS_REGION conflict) |
-| `EMR_RELEASE` | `emr-7.12.0` | EMR release label |
-| `EMR_PYTHON_VERSION` | `39` | Target Python version (cpython) |
-| `TARGET_PLATFORM` | `manylinux2014_x86_64` | Target platform for wheels |
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `S3_BUCKET` | `zpfsingapore` | S3 存储桶名称 |
+| `S3_PREFIX` | `emr/poc` | S3 路径前缀 |
+| `EMR_REGION` | `ap-southeast-1` | AWS 区域（避免与 AWS_REGION 冲突） |
+| `EMR_RELEASE` | `emr-7.12.0` | EMR 版本标签 |
+| `EMR_PYTHON_VERSION` | `39` | 目标 Python 版本（cpython） |
+| `TARGET_PLATFORM` | `manylinux2014_x86_64` | 目标平台（用于下载 wheel） |
 
-## Constraints & Notes
+## 约束与注意事项
 
-### Important Constraints
+### 重要约束
 
-1. **Python Version Matching**: The third-party packages MUST be built for the same Python version as the EMR runtime. EMR 6.x/7.x uses Python 3.9. Use `--python-version 39` when downloading wheels.
+1. **Python 版本匹配**：第三方包必须针对 EMR 运行时的 Python 版本构建。EMR 7.x 使用 Python 3.9。下载 wheel 时需指定 `--python-version 39`。
 
-2. **Platform Matching**: Packages with C extensions (numpy, pandas) need platform-specific wheels. Use `--platform manylinux2014_x86_64` for x86 EMR instances.
+2. **平台匹配**：包含 C 扩展的包（如 numpy、pandas）需要平台特定的 wheel。对于 x86 EMR 实例使用 `--platform manylinux2014_x86_64`。
 
-3. **Pre-installed Packages**: EMR already includes numpy, pandas, boto3, pyarrow. You only need to package libraries NOT pre-installed on EMR. Check with a diagnostic job first.
+3. **预装包无需重复打包**：EMR 已预装 numpy、pandas、boto3、pyarrow。只需打包 EMR 上未预装的库。可通过诊断任务检查。
 
-4. **Archive Size**: Keep the archive reasonable (<200MB). Large archives increase job startup time.
+4. **归档大小**：建议控制在 200MB 以内。过大的归档会增加任务启动时间。
 
-5. **No Python Binary**: Do NOT include a Python interpreter in the archive. Use EMR's built-in Python. Packaging a custom Python binary creates shared library dependency issues.
+5. **不要包含 Python 解释器**：归档中不要打包 Python 二进制文件。应使用 EMR 内置的 Python。打包自定义 Python 会导致共享库依赖问题。
 
-### EMR Pre-installed Packages (7.12.0)
+### EMR 预装包列表 (7.12.0)
 
 - numpy 2.0.2
 - pandas 2.3.3
 - boto3 1.42.27
 - pyarrow 21.0.0
 
-### Cross-Account / Cross-Region Reuse
+### 跨账号 / 跨区域复用
 
-To use this solution in a different AWS account or region:
+要在不同 AWS 账号或区域使用本方案：
 
-1. Set environment variables:
+1. 设置环境变量：
    ```bash
    export S3_BUCKET=your-bucket
    export S3_PREFIX=your/prefix
    export EMR_REGION=your-region
    ```
 
-2. Ensure IAM roles exist:
-   - EMR Serverless: `EMRServerlessS3RuntimeRole` with S3 access
-   - EMR on EC2: `EMR_DefaultRole` (service) + `EMR_EC2_DefaultRole` (instance profile)
+2. 确保 IAM 角色存在：
+   - EMR Serverless：`EMRServerlessS3RuntimeRole`，需要 S3 访问权限
+   - EMR on EC2：`EMR_DefaultRole`（服务角色）+ `EMR_EC2_DefaultRole`（实例配置文件）
 
-3. Run the packaging and submission scripts.
+3. 运行打包和提交脚本即可。
 
-## Test Results
+## 测试验证结果
 
-### EMR Serverless (emr-7.12.0) - PASSED
+### EMR Serverless (emr-7.12.0) - 通过 ✓
 
-- Re-verified from fresh git clone
-- Third-party libraries (numpy, pandas, requests): PASSED
-- Custom shared libraries (shared_libs): PASSED
-- Full output: `test_results/emr_serverless_output.log`
+- 从 fresh git clone 重新验证通过
+- 第三方库（numpy、pandas、requests）：通过
+- 自定义类库（shared_libs）：通过
+- 完整输出日志：`test_results/emr_serverless_output.log`
 
-### EMR on EC2 (emr-6.15.0) - Ready (infrastructure-dependent)
+### EMR on EC2 (emr-6.15.0) - 就绪（依赖基础设施）
 
-- The submission script (`scripts/submit_emr_on_ec2.py`) uses the same `--archives` + `PYTHONPATH` mechanism
-- Only difference from Serverless: `spark.yarn.appMasterEnv.PYTHONPATH` instead of `spark.emr-serverless.driverEnv.PYTHONPATH`
-- Prerequisite: VPC must have internet connectivity for EMR bootstrap (download EMR software packages)
-- If cluster creation fails with "Time out occurred during bootstrap", check security groups and internet gateway
+- 提交脚本（`scripts/submit_emr_on_ec2.py`）使用相同的 `--archives` + `PYTHONPATH` 机制
+- 与 Serverless 唯一区别：`spark.yarn.appMasterEnv.PYTHONPATH` 替代 `spark.emr-serverless.driverEnv.PYTHONPATH`
+- 前提条件：VPC 需要有互联网连接（EMR bootstrap 需要下载软件包）
+- 如集群创建失败并提示 "Time out occurred during bootstrap"，请检查安全组和互联网网关配置
 
-## Standardized Dependency Packaging Flow
+## 标准化依赖打包流程
 
 ```
-Step 1: Develop custom Python libraries
-         └── shared_libs/ (your custom code)
+步骤 1: 开发自定义 Python 类库
+         └── shared_libs/（你的自定义代码）
 
-Step 2: Define third-party dependencies
-         └── requirements.txt (packages not pre-installed on EMR)
+步骤 2: 声明第三方依赖
+         └── requirements.txt（EMR 上未预装的包）
 
-Step 3: Run packaging script
+步骤 3: 运行打包脚本
          └── python3.12 scripts/package_dependencies.py
-             ├── Downloads platform-specific wheels (Python 3.9, manylinux2014_x86_64)
-             ├── Extracts wheels into unified directory
-             ├── Copies custom shared_libs into same directory
-             └── Creates single tar.gz archive
+             ├── 下载平台特定的 wheel（Python 3.9, manylinux2014_x86_64）
+             ├── 解压 wheel 到统一目录
+             ├── 复制自定义 shared_libs 到同一目录
+             └── 创建单一 tar.gz 归档
 
-Step 4: Upload archive + job script to S3
+步骤 4: 上传归档和任务脚本到 S3
          └── s3://bucket/prefix/libs/pyspark_deps_all.tar.gz
              s3://bucket/prefix/jobs/main_job.py
 
-Step 5: Submit job
+步骤 5: 提交任务
          EMR Serverless:  python3.12 scripts/submit_emr_serverless.py
          EMR on EC2:      python3.12 scripts/submit_emr_on_ec2.py
 ```
 
-### Spark Submit Parameters (Core Pattern)
+### Spark Submit 核心参数
 
 ```bash
 spark-submit \
   --archives s3://bucket/libs/pyspark_deps_all.tar.gz#deps \
-  --conf spark.<platform-specific>.PYTHONPATH=./deps \
+  --conf spark.<平台特定配置>.PYTHONPATH=./deps \
   --conf spark.executorEnv.PYTHONPATH=./deps \
   s3://bucket/jobs/main_job.py
 ```
 
-| Platform | Driver PYTHONPATH Config |
-|----------|------------------------|
+| 平台 | Driver PYTHONPATH 配置项 |
+|------|------------------------|
 | EMR Serverless | `spark.emr-serverless.driverEnv.PYTHONPATH=./deps` |
-| EMR on EC2 (YARN cluster mode) | `spark.yarn.appMasterEnv.PYTHONPATH=./deps` |
+| EMR on EC2 (YARN cluster 模式) | `spark.yarn.appMasterEnv.PYTHONPATH=./deps` |
