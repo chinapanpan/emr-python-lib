@@ -39,14 +39,15 @@
 ### 1. 打包依赖
 
 ```bash
-python3.12 scripts/package_dependencies.py
+bash scripts/package_dependencies.sh
 ```
 
 该脚本执行以下操作：
-1. 下载平台兼容的第三方包 wheel（针对 EMR 的 Python 3.9）
+1. `pip download` 下载平台兼容的第三方包 wheel（针对 EMR 的 Python 3.9）
 2. 复制自定义 `shared_libs/` 代码
-3. 合并为单一 `pyspark_deps_all.tar.gz` 归档
-4. 上传至 S3
+3. `unzip` 解压 wheel 并合并为统一目录
+4. `tar -czf` 创建单一 `pyspark_deps_all.tar.gz` 归档
+5. `aws s3 cp` 上传至 S3
 
 ### 2. 提交到 EMR Serverless
 
@@ -109,7 +110,7 @@ emr-python-lib/
 ├── jobs/
 │   └── main_job.py            # 主 PySpark 任务（验证用）
 ├── scripts/
-│   ├── package_dependencies.py # 打包脚本
+│   ├── package_dependencies.sh  # 打包脚本（Shell）
 │   ├── submit_emr_serverless.py # EMR Serverless 提交脚本
 │   └── submit_emr_on_ec2.py   # EMR on EC2 提交脚本
 ├── requirements.txt            # 第三方依赖声明
@@ -191,17 +192,14 @@ emr-python-lib/
          └── requirements.txt（EMR 上未预装的包）
 
 步骤 3: 运行打包脚本
-         └── python3.12 scripts/package_dependencies.py
-             ├── 下载平台特定的 wheel（Python 3.9, manylinux2014_x86_64）
-             ├── 解压 wheel 到统一目录
-             ├── 复制自定义 shared_libs 到同一目录
-             └── 创建单一 tar.gz 归档
+         └── bash scripts/package_dependencies.sh
+             ├── pip download: 下载平台特定的 wheel
+             ├── unzip: 解压 wheel 到统一目录
+             ├── cp: 复制自定义 shared_libs 到同一目录
+             ├── tar -czf: 创建单一 tar.gz 归档
+             └── aws s3 cp: 上传到 S3
 
-步骤 4: 上传归档和任务脚本到 S3
-         └── s3://bucket/prefix/libs/pyspark_deps_all.tar.gz
-             s3://bucket/prefix/jobs/main_job.py
-
-步骤 5: 提交任务
+步骤 4: 提交任务
          EMR Serverless:  python3.12 scripts/submit_emr_serverless.py
          EMR on EC2:      python3.12 scripts/submit_emr_on_ec2.py
 ```
