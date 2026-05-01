@@ -17,7 +17,7 @@ REGION = os.environ.get("EMR_REGION", "ap-southeast-1")
 S3_BUCKET = os.environ.get("S3_BUCKET", "zpfsingapore")
 S3_PREFIX = os.environ.get("S3_PREFIX", "emr/poc")
 S3_LOGS = f"s3://{S3_BUCKET}/{S3_PREFIX}/logs/ec2"
-RELEASE_LABEL = os.environ.get("EMR_RELEASE", "emr-6.15.0")
+RELEASE_LABEL = os.environ.get("EMR_RELEASE", "emr-7.12.0")
 
 S3_MAIN_JOB = f"s3://{S3_BUCKET}/{S3_PREFIX}/jobs/main_job.py"
 S3_DEPS_ARCHIVE = f"s3://{S3_BUCKET}/{S3_PREFIX}/libs/pyspark_deps_all.tar.gz"
@@ -43,10 +43,10 @@ def get_or_create_cluster(client):
             return c["Id"]
 
     ec2 = boto3.client("ec2", region_name=REGION)
-    vpcs = ec2.describe_vpcs(Filters=[{"Name": "isDefault", "Values": ["true"]}])
-    vpc_id = vpcs["Vpcs"][0]["VpcId"]
-    subnets = ec2.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-    subnet_id = subnets["Subnets"][0]["SubnetId"]
+    subnets = ec2.describe_subnets(Filters=[{"Name": "default-for-az", "Values": ["true"]}])
+    subnet_ids = [s["SubnetId"] for s in subnets["Subnets"]]
+    subnet_id = os.environ.get("EMR_SUBNET_ID", subnet_ids[0])
+    print(f"[..] Using subnet: {subnet_id}")
 
     print(f"[..] Creating cluster: {CLUSTER_NAME} ({RELEASE_LABEL})")
     resp = client.run_job_flow(
@@ -72,7 +72,7 @@ def get_or_create_cluster(client):
     return cluster_id
 
 
-def _wait_for_cluster(client, cluster_id, timeout=600):
+def _wait_for_cluster(client, cluster_id, timeout=900):
     print(f"[..] Waiting for cluster {cluster_id}...")
     start = time.time()
     while time.time() - start < timeout:

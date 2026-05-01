@@ -132,22 +132,13 @@ emr-python-lib/
 
 ### 重要约束
 
-1. **Python 版本匹配**：第三方包必须针对 EMR 运行时的 Python 版本构建。EMR 7.x 使用 Python 3.9。下载 wheel 时需指定 `--python-version 39`。
+1. **包含所有运行时依赖**：即使 EMR Serverless 预装了 numpy/pandas，EMR on EC2 的 YARN container 中可能无法访问系统 site-packages。建议将所有运行时依赖都打入归档，确保跨平台一致性。
 
-2. **平台匹配**：包含 C 扩展的包（如 numpy、pandas）需要平台特定的 wheel。对于 x86 EMR 实例使用 `--platform manylinux2014_x86_64`。
+2. **归档大小**：建议控制在 200MB 以内。过大的归档会增加任务启动时间。
 
-3. **预装包无需重复打包**：EMR 已预装 numpy、pandas、boto3、pyarrow。只需打包 EMR 上未预装的库。可通过诊断任务检查。
+3. **不要包含 Python 解释器**：归档中不要打包 Python 二进制文件。应使用 EMR 内置的 Python。打包自定义 Python 会导致共享库依赖问题。
 
-4. **归档大小**：建议控制在 200MB 以内。过大的归档会增加任务启动时间。
-
-5. **不要包含 Python 解释器**：归档中不要打包 Python 二进制文件。应使用 EMR 内置的 Python。打包自定义 Python 会导致共享库依赖问题。
-
-### EMR 预装包列表 (7.12.0)
-
-- numpy 2.0.2
-- pandas 2.3.3
-- boto3 1.42.27
-- pyarrow 21.0.0
+4. **VPC 网络要求**：EMR on EC2 集群的子网必须能访问 S3（通过 Internet Gateway 或 S3 VPC Endpoint）。如 S3 VPC Endpoint 有 IP 限制策略会导致 bootstrap 失败。
 
 ### 跨账号 / 跨区域复用
 
@@ -175,12 +166,13 @@ emr-python-lib/
 - 自定义类库（shared_libs）：通过
 - 完整输出日志：`test_results/emr_serverless_output.log`
 
-### EMR on EC2 (emr-6.15.0) - 就绪（依赖基础设施）
+### EMR on EC2 (emr-7.12.0) - 通过 ✓
 
-- 提交脚本（`scripts/submit_emr_on_ec2.py`）使用相同的 `--archives` + `PYTHONPATH` 机制
+- 集群创建 + spark-submit step 提交均通过
+- 第三方库（numpy、pandas、requests）：通过
+- 自定义类库（shared_libs）：通过
+- 使用 `--deploy-mode cluster` + `--archives` + `spark.yarn.appMasterEnv.PYTHONPATH`
 - 与 Serverless 唯一区别：`spark.yarn.appMasterEnv.PYTHONPATH` 替代 `spark.emr-serverless.driverEnv.PYTHONPATH`
-- 前提条件：VPC 需要有互联网连接（EMR bootstrap 需要下载软件包）
-- 如集群创建失败并提示 "Time out occurred during bootstrap"，请检查安全组和互联网网关配置
 
 ## 标准化依赖打包流程
 
