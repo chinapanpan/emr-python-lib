@@ -17,11 +17,11 @@
 │                                                           │
 │  ┌─────────────────────┐  ┌───────────────────────────┐ │
 │  │  自定义类库           │  │  第三方 Python 包          │ │
-│  │  (shared_libs/)      │  │  (requests, certifi 等)   │ │
-│  │                      │  │                            │ │
-│  │  - constants/        │  │  以平台兼容的 wheel 形式   │ │
-│  │  - models/           │  │  针对 EMR 目标 Python      │ │
-│  │  - core_data_*_utils/│  │  版本进行下载              │ │
+│  │  (shared_libs/)      │  │  (requests, numpy,        │ │
+│  │                      │  │   pandas 等)              │ │
+│  │  - constants/        │  │                            │ │
+│  │  - models/           │  │  通过 pip install -t       │ │
+│  │  - core_data_*_utils/│  │  安装到统一目录            │ │
 │  │  - utils/            │  │                            │ │
 │  └─────────────────────┘  └───────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
@@ -43,11 +43,10 @@ bash scripts/package_dependencies.sh
 ```
 
 该脚本执行以下操作：
-1. `pip download` 下载平台兼容的第三方包 wheel（针对 EMR 的 Python 3.9）
-2. 复制自定义 `shared_libs/` 代码
-3. `unzip` 解压 wheel 并合并为统一目录
-4. `tar -czf` 创建单一 `pyspark_deps_all.tar.gz` 归档
-5. `aws s3 cp` 上传至 S3
+1. `pip install -r requirements.txt -t` 安装第三方包到统一目录
+2. `cp -r shared_libs/` 复制自定义类库到同一目录
+3. `tar -czf` 创建单一 `pyspark_deps_all.tar.gz` 归档
+4. `aws s3 cp` 上传归档和任务脚本至 S3
 
 ### 2. 提交到 EMR Serverless
 
@@ -83,6 +82,8 @@ pyspark_deps_all.tar.gz
 │   ├── core_data_common_utils/  # 数据质量检查、Spark 工具
 │   ├── core_data_source_utils/  # 文件工具、S3 数据加载器
 │   └── utils/             # 日志、日期工具
+├── numpy/                 # 第三方包：numpy
+├── pandas/                # 第三方包：pandas
 ├── requests/              # 第三方包：requests
 ├── certifi/               # 第三方包：certifi  
 ├── charset_normalizer/    # 第三方包：charset_normalizer
@@ -125,8 +126,7 @@ emr-python-lib/
 | `S3_PREFIX` | `emr/poc` | S3 路径前缀 |
 | `EMR_REGION` | `ap-southeast-1` | AWS 区域（避免与 AWS_REGION 冲突） |
 | `EMR_RELEASE` | `emr-7.12.0` | EMR 版本标签 |
-| `EMR_PYTHON_VERSION` | `39` | 目标 Python 版本（cpython） |
-| `TARGET_PLATFORM` | `manylinux2014_x86_64` | 目标平台（用于下载 wheel） |
+| `EMR_SUBNET_ID` | （自动选择默认子网） | EMR on EC2 使用的子网 |
 
 ## 约束与注意事项
 
@@ -181,13 +181,12 @@ emr-python-lib/
          └── shared_libs/（你的自定义代码）
 
 步骤 2: 声明第三方依赖
-         └── requirements.txt（EMR 上未预装的包）
+         └── requirements.txt（所有运行时需要的包）
 
 步骤 3: 运行打包脚本
          └── bash scripts/package_dependencies.sh
-             ├── pip download: 下载平台特定的 wheel
-             ├── unzip: 解压 wheel 到统一目录
-             ├── cp: 复制自定义 shared_libs 到同一目录
+             ├── pip install -t: 安装第三方包到统一目录
+             ├── cp -r: 复制自定义 shared_libs 到同一目录
              ├── tar -czf: 创建单一 tar.gz 归档
              └── aws s3 cp: 上传到 S3
 
