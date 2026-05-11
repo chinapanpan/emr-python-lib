@@ -1,0 +1,13 @@
+build/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.tar.gz
+pyspark_venv/
+.env
+DBX.pdf
+task_plan.md
+findings.md
+progress.md
+test_results/
